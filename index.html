@@ -22,54 +22,6 @@
 
     <!-- Custom styling including overrides to the jQueryMobile structure CSS -->
     <link href="css/bucketlist.css" rel="stylesheet">
-
-    <!-- jQuery and jQueryMobile libraries -->
-    <script src="js/jquery-1.9.1.min.js"></script>
-    <script src="js/jquery.mobile-1.3.1.min.js"></script>
-    <!-- Don't forget to download and include the SDK -->
-
-    <!-- It’s available at https://raw.github.com/apigee/apigee-javascript-sdk/master/source/apigee.js -->
-    <script src="js/apigee.js"></script>
-    <script>
-
-        // Initializing the SDK
-        var client = new Apigee.Client({
-            orgName:'samsamskies', // Your Apigee.com username for App Services
-            appName:'sandbox' // Your Apigee App Services app name
-        });
-
-        // Reading data
-        var items = new Apigee.Collection({ "client":client, "type":"items" });
-        items.fetch(
-            function(err, data) { // Success
-                $bucketlist = $('#bucketlist');
-
-                if (err) {
-                    // no connection, no problem
-                    $bucketlist.html(localStorage.getItem('items'));
-                } else {
-                    $bucketlist.empty();
-
-                    while(items.hasNextEntity()) {
-                        var item = items.getNextEntity();
-                        // console.log("%c" + item.get("title"), 'background: #222; color: #bada55; font-size: 72px');
-                        var template = $('<li>').append($('<a>').attr('href', '#page-add' ).html( item.get('title')));
-
-                        $bucketlist.append(template).listview("refresh");
-
-                        // store stuff in the browser local storage
-                        localStorage.setItem('items', $('#bucketlist').html());
-                    }
-                }
-            });
-
-        // Uncomment the next 4 lines if you want to write data
-
-        // book = { "title": "the old man and the sea" };
-        // books.addEntity(book, function (error, response) {
-        //  if (error) { alert("write failed");
-        //  } else { alert("write succeeded"); } });
-    </script>
 </head>
 
 <body>
@@ -80,7 +32,7 @@
         </header>
         <!-- /header -->
         <article data-role="content" id="contentlist">
-            <ul data-role="listview" id="bucketlist" class="mybucketlist">
+            <ul data-role="listview" data-filter="true" id="bucketlist" class="mybucketlist">
                 <li><a href="#page-add">My first bucketlist item</a></li>
                 <li><a href="#page-add">Another bucklist item</a></li>
                 <li><a href="#page-add">A third thing on my bucketlist</a></li>
@@ -123,6 +75,89 @@
         </article>
         <!-- /content -->
     </section>
+    <!-- jQuery and jQueryMobile libraries -->
+    <script src="js/jquery-1.9.1.min.js"></script>
+    <script src="js/jquery.mobile-1.3.1.min.js"></script>
+    <!-- Don't forget to download and include the SDK -->
+
+    <!-- It’s available at https://raw.github.com/apigee/apigee-javascript-sdk/master/source/apigee.js -->
+    <script src="js/apigee.js"></script>
+    <script>
+
+        // Initializing the SDK
+        var client = new Apigee.Client({
+            orgName:'samsamskies', // Your Apigee.com username for App Services
+            appName:'sandbox' // Your Apigee App Services app name
+        });
+
+        // Reading data
+        var items = new Apigee.Collection({
+            client: client,
+            type: "items",
+            qs: {
+                // limit: 2,
+                ql: "order by title"
+            }
+        });
+
+        function loadItems() {
+            items.fetch(
+                function(err, data) { // Success
+                    var template;
+                    $bucketlist = $('#bucketlist');
+
+                    var displayItems = function() {
+                        $bucketlist.empty();
+
+                        while(items.hasNextEntity()) {
+                            var item = items.getNextEntity();
+                            // console.log("%c" + item.get("title"), 'background: #222; color: #bada55; font-size: 72px');
+                            template = $('<li>').append($('<a>').attr('href', '#page-add' ).html( item.get('title')));
+                            $bucketlist.append(template).listview("refresh");
+                        }
+                    }
+
+                    if (err) {
+                        // no connection, no problem
+                        items = client.restoreCollection(localStorage.getItem('items'));
+                        items.resetEntityPointer();
+                        displayItems();
+                    } else {
+                        displayItems();
+
+                        // store stuff in the browser local storage
+                        localStorage.setItem('items', items.serialize());
+                    }
+
+                }
+            );
+        }
+
+        $('#form-add-item').on('click', '#btn-submit', function(e) {
+            var item = {
+                title: $('#form-title').val(),
+                desc: $('#form-desc').val()
+            }
+
+            items.addEntity(item, function(error, response) {
+                if (error) {
+                    console.log('write failed')
+                } else {
+                    $('#form-title').val('');
+                    $('#form-desc').val('');
+                    loadItems();
+                }
+            });
+        })
+
+        loadItems();
+        // Uncomment the next 4 lines if you want to write data
+
+        // book = { "title": "the old man and the sea" };
+        // books.addEntity(book, function (error, response) {
+        //  if (error) { alert("write failed");
+        //  } else { alert("write succeeded"); } });
+    </script>
 </body>
 
 </html>
